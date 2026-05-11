@@ -40,13 +40,14 @@ class ModelArguments:
         default="main",
         metadata={"help": "The specific model version to use (can be a branch name, tag name or commit id)."},
     )
-    use_auth_token: bool = field(
+    """    use_auth_token: bool = field(
         default=False,
         metadata={
             "help": "Will use the token generated when running `transformers-cli login` (necessary to use this script "
             "with private models)."
         },
-    )
+    )"""
+
 
     use_history_logits: bool = field(
         default=False, metadata={"help": "Use the logits from lower layers as features"}
