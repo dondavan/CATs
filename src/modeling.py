@@ -130,20 +130,23 @@ class AlbertWithEarlyExits(AlbertForSequenceClassification):
 
         if self.use_meta_predictors:
             if self.shared_meta:
+                # Fix: use correct hidden size based on use_early_poolers
+                hidden_cls_size = config.early_pooler_hidden_size if self.use_early_poolers else config.hidden_size
                 if self.num_labels == 1:
-                    self.meta_pooler = nn.Linear(config.early_pooler_hidden_size + (self.num_inner_classifiers - 1),
+                    self.meta_pooler = nn.Linear(hidden_cls_size + (self.num_inner_classifiers - 1),
                                                      config.early_pooler_hidden_size)
                 else:
-                    self.meta_pooler = nn.Linear(config.num_labels + config.early_pooler_hidden_size + 2 + (self.num_inner_classifiers - 1),
+                    self.meta_pooler = nn.Linear(config.num_labels + hidden_cls_size + 2 + (self.num_inner_classifiers - 1),
                                                      config.early_pooler_hidden_size)
                 self.meta_predictor = nn.Linear(config.early_pooler_hidden_size, 2)
             else:
+                hidden_cls_size = config.early_pooler_hidden_size if self.use_early_poolers else config.hidden_size
                 if self.num_labels == 1:
-                    self.meta_poolers = nn.ModuleList([nn.Linear(config.early_pooler_hidden_size + (self.num_inner_classifiers - 1),
+                    self.meta_poolers = nn.ModuleList([nn.Linear(hidden_cls_size + (self.num_inner_classifiers - 1),
                                                     config.early_pooler_hidden_size)
                                                    for _ in range(self.num_inner_classifiers)])
                 else:
-                    self.meta_poolers = nn.ModuleList([nn.Linear(config.num_labels + config.early_pooler_hidden_size + 2 + (self.num_inner_classifiers - 1),
+                    self.meta_poolers = nn.ModuleList([nn.Linear(config.num_labels + hidden_cls_size + 2 + (self.num_inner_classifiers - 1),
                                                     config.early_pooler_hidden_size)
                                                    for _ in range(self.num_inner_classifiers)])
 
@@ -165,10 +168,12 @@ class AlbertWithEarlyExits(AlbertForSequenceClassification):
                                 self.num_labels)
         all_logits[:,-1,:] = top_logits
 
+        # Fix: allocate hidden_cls based on whether early poolers are used
+        hidden_cls_size = self.config.early_pooler_hidden_size if self.use_early_poolers else self.config.hidden_size
         hidden_cls = top_logits.new_zeros(
                                 top_logits.shape[0],  # Batch size
                                 self.num_inner_classifiers,
-                                self.config.early_pooler_hidden_size)
+                                hidden_cls_size)
 
         # Intermediate classifiers
         for i in range(self.num_inner_classifiers):

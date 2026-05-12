@@ -24,12 +24,14 @@ import os
 import random
 import sys
 import torch
+from torch.optim import AdamW
 from dataclasses import dataclass, field
 from typing import Optional
 from copy import deepcopy
 
 import numpy as np
-from datasets import load_dataset, load_metric
+from datasets import load_dataset
+import evaluate
 
 import transformers
 from transformers import (
@@ -44,7 +46,6 @@ from transformers import (
     TrainingArguments,
     default_data_collator,
     set_seed,
-    AdamW,
 )
 from transformers.trainer_utils import get_last_checkpoint, is_main_process
 from transformers.utils import check_min_version
@@ -248,12 +249,16 @@ def main():
     for key in data_files.keys():
         logger.info(f"load a local file for {key}: {data_files[key]}")
 
-    if data_args.early_train_file.endswith(".csv"):
+    if data_args.task_name is not None:
+        # Loading a dataset from the GLUE benchmark
+        datasets = load_dataset("glue", data_args.task_name)
+    elif data_args.early_train_file.endswith(".csv"):
         # Loading a dataset from local csv files
         datasets = load_dataset("csv", data_files=data_files)
     else:
         # Loading a dataset from local json files
         datasets = load_dataset("json", data_files=data_files, field="data")
+    
     # See more about loading any type of standard or custom dataset at
     # https://huggingface.co/docs/datasets/loading_datasets.html.
 
@@ -287,7 +292,7 @@ def main():
         finetuning_task=data_args.task_name,
         cache_dir=model_args.cache_dir,
         revision=model_args.model_revision,
-        use_auth_token=True if model_args.use_auth_token else None,
+        #use_auth_token=True if model_args.use_auth_token else None,
     )
     config.use_history_logits = model_args.use_history_logits
     config.use_early_poolers = model_args.use_early_poolers
@@ -302,7 +307,7 @@ def main():
         cache_dir=model_args.cache_dir,
         use_fast=model_args.use_fast_tokenizer,
         revision=model_args.model_revision,
-        use_auth_token=True if model_args.use_auth_token else None,
+        #use_auth_token=True if model_args.use_auth_token else None,
     )
     model = AlbertWithEarlyExits.from_pretrained(
         model_args.model_name_or_path,
@@ -310,9 +315,11 @@ def main():
         config=config,
         cache_dir=model_args.cache_dir,
         revision=model_args.model_revision,
-        use_auth_token=True if model_args.use_auth_token else None,
+        ignore_mismatched_sizes=True,
     )
-
+    print(model)
+    print(training_args)
+    print("Preprocessing the datasets.")
     # Preprocessing the datasets
     if data_args.task_name is not None:
         sentence1_key, sentence2_key = task_to_keys[data_args.task_name]
@@ -374,6 +381,8 @@ def main():
         return result
 
     datasets = datasets.map(preprocess_function, batched=True, load_from_cache_file=not data_args.overwrite_cache)
+    
+    print("datasets. loaded and preprocessed")
     if training_args.do_train:
         if "train" not in datasets:
             raise ValueError("--do_train requires a train dataset")
@@ -402,9 +411,9 @@ def main():
 
     # Get the metric function
     if data_args.task_name is not None:
-        metric = load_metric("glue", data_args.task_name)
+        metric = evaluate.load("glue", data_args.task_name)
     else:
-        metric = load_metric("accuracy")
+        metric = evaluate.load("accuracy")
 
     # You can define your custom compute_metrics function. It takes an `EvalPrediction` object (a namedtuple with a
     # predictions and label_ids field) and has to return a dictionary string to float.
@@ -476,12 +485,14 @@ def main():
         train_dataset=train_dataset if training_args.do_train else None,
         eval_dataset=eval_dataset if training_args.do_eval else None,
         compute_metrics=compute_metrics_fn,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         data_collator=data_collator,
     )
 
+    print("Trainer initialized")
     # Training
     if training_args.do_train:
+        print("Training started")
         checkpoint = None
 
         train_result = trainer.train(resume_from_checkpoint=None)
@@ -534,7 +545,8 @@ def main():
             args=scaling_args,
             optimizers=(optimizer, None),
             train_dataset=scaling_dataset,
-            compute_metrics=compute_metrics_fn
+            compute_metrics=compute_metrics_fn,
+            processing_class=tokenizer,
         )
 
         train_results = trainer.train()
@@ -562,7 +574,8 @@ def main():
             model=model,
             args=meta_args,
             train_dataset=meta_dataset,
-            compute_metrics=compute_metrics_fn
+            compute_metrics=compute_metrics_fn,
+            processing_class=tokenizer,
         )
 
         train_results = trainer.train()

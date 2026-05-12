@@ -1,0 +1,458 @@
+05/12/2026 16:57:27 - WARNING - __main__ -   Process rank: -1, device: cpu, n_gpu: 0distributed training: False, 16-bits training: False
+[INFO|train_cat.py:219] 2026-05-12 16:57:27,310 >> Training/evaluation parameters EarlyTrainingArguments(
+accelerator_config={'split_batches': False, 'dispatch_batches': None, 'even_batches': True, 'use_seedable_sampler': True, 'non_blocking': False, 'gradient_accumulation_kwargs': None, 'use_configured_state': False},
+adam_beta1=0.9,
+adam_beta2=0.999,
+adam_epsilon=1e-08,
+auto_find_batch_size=False,
+average_tokens_across_devices=True,
+batch_eval_metrics=False,
+bf16=False,
+bf16_full_eval=False,
+data_seed=None,
+dataloader_drop_last=False,
+dataloader_num_workers=0,
+dataloader_persistent_workers=False,
+dataloader_pin_memory=True,
+dataloader_prefetch_factor=None,
+ddp_backend=None,
+ddp_broadcast_buffers=None,
+ddp_bucket_cap_mb=None,
+ddp_find_unused_parameters=None,
+ddp_static_graph=None,
+ddp_timeout=1800,
+debug=[],
+deepspeed=None,
+disable_tqdm=False,
+do_eval=False,
+do_predict=False,
+do_predict_eval=False,
+do_test=False,
+do_train=True,
+enable_jit_checkpoint=False,
+eval_accumulation_steps=None,
+eval_delay=0,
+eval_do_concat_batches=True,
+eval_on_start=False,
+eval_steps=None,
+eval_strategy=IntervalStrategy.NO,
+eval_use_gather_object=False,
+fp16=False,
+fp16_full_eval=False,
+fsdp=[],
+fsdp_config={'min_num_params': 0, 'xla': False, 'xla_fsdp_v2': False, 'xla_fsdp_grad_ckpt': False},
+full_determinism=False,
+gradient_accumulation_steps=1,
+gradient_checkpointing=False,
+gradient_checkpointing_kwargs=None,
+greater_is_better=None,
+hub_always_push=False,
+hub_model_id=None,
+hub_private_repo=None,
+hub_revision=None,
+hub_strategy=HubStrategy.EVERY_SAVE,
+hub_token=<HUB_TOKEN>,
+ignore_data_skip=False,
+include_for_metrics=[],
+include_num_input_tokens_seen=no,
+label_names=None,
+label_smoothing_factor=0.0,
+learning_rate=5e-05,
+length_column_name=length,
+liger_kernel_config=None,
+load_best_model_at_end=False,
+local_rank=-1,
+log_level=passive,
+log_level_replica=warning,
+log_on_each_node=True,
+logging_dir=None,
+logging_first_step=False,
+logging_nan_inf_filter=True,
+logging_steps=500,
+logging_strategy=IntervalStrategy.STEPS,
+lr_scheduler_kwargs=None,
+lr_scheduler_type=SchedulerType.LINEAR,
+max_grad_norm=1.0,
+max_steps=-1,
+meta_iterations=None,
+meta_learning_rate=None,
+metric_for_best_model=None,
+neftune_noise_alpha=None,
+num_train_epochs=3.0,
+optim=OptimizerNames.ADAMW_TORCH_FUSED,
+optim_args=None,
+optim_target_modules=None,
+output_dir=model_output,
+parallelism_config=None,
+per_device_eval_batch_size=8,
+per_device_train_batch_size=8,
+prediction_loss_only=False,
+project=huggingface,
+push_to_hub=False,
+remove_unused_columns=True,
+report_to=[],
+restore_callback_states_from_checkpoint=False,
+resume_from_checkpoint=None,
+run_name=None,
+save_on_each_node=False,
+save_only_model=False,
+save_steps=500,
+save_strategy=SaveStrategy.STEPS,
+save_total_limit=None,
+scaling_iterations=None,
+seed=42,
+skip_memory_metrics=True,
+tf32=None,
+torch_compile=False,
+torch_compile_backend=None,
+torch_compile_mode=None,
+torch_empty_cache_steps=None,
+trackio_bucket_id=None,
+trackio_space_id=None,
+trackio_static_space_id=None,
+train_sampling_strategy=random,
+use_cache=False,
+use_cpu=False,
+use_liger_kernel=False,
+warmup_ratio=None,
+warmup_steps=0,
+weight_decay=0.0,
+)
+[INFO|train_cat.py:250] 2026-05-12 16:57:27,311 >> load a local file for train: None
+[INFO|train_cat.py:250] 2026-05-12 16:57:27,311 >> load a local file for validation: None
+[WARNING|_http.py:904] 2026-05-12 16:57:27,535 >> Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[INFO|configuration_utils.py:780] 2026-05-12 16:57:30,125 >> loading configuration file config.json from cache at /home/hugh/.cache/huggingface/hub/models--albert--albert-xlarge-v1/snapshots/ed6f87d14403b3c459a458fa6aa9dc5c51c517c1/config.json
+[INFO|configuration_utils.py:856] 2026-05-12 16:57:30,126 >> Model config AlbertConfig {
+  "architectures": [
+    "AlbertForMaskedLM"
+  ],
+  "attention_probs_dropout_prob": 0.1,
+  "bos_token_id": 2,
+  "classifier_dropout_prob": 0.1,
+  "down_scale_factor": 1,
+  "embedding_size": 128,
+  "eos_token_id": 3,
+  "gap_size": 0,
+  "hidden_act": "gelu",
+  "hidden_dropout_prob": 0.1,
+  "hidden_size": 2048,
+  "id2label": {
+    "0": "LABEL_0"
+  },
+  "initializer_range": 0.02,
+  "inner_group_num": 1,
+  "intermediate_size": 8192,
+  "label2id": {
+    "LABEL_0": 0
+  },
+  "layer_norm_eps": 1e-12,
+  "max_position_embeddings": 512,
+  "model_type": "albert",
+  "net_structure_type": 0,
+  "num_attention_heads": 16,
+  "num_hidden_groups": 1,
+  "num_hidden_layers": 24,
+  "num_memory_blocks": 0,
+  "pad_token_id": 0,
+  "tie_word_embeddings": true,
+  "transformers_version": "5.8.0",
+  "type_vocab_size": 2,
+  "vocab_size": 30000
+}
+
+[INFO|configuration_utils.py:780] 2026-05-12 16:57:30,280 >> loading configuration file config.json from cache at /home/hugh/.cache/huggingface/hub/models--albert--albert-xlarge-v1/snapshots/ed6f87d14403b3c459a458fa6aa9dc5c51c517c1/config.json
+[INFO|configuration_utils.py:856] 2026-05-12 16:57:30,281 >> Model config AlbertConfig {
+  "architectures": [
+    "AlbertForMaskedLM"
+  ],
+  "attention_probs_dropout_prob": 0.1,
+  "bos_token_id": 2,
+  "classifier_dropout_prob": 0.1,
+  "down_scale_factor": 1,
+  "embedding_size": 128,
+  "eos_token_id": 3,
+  "gap_size": 0,
+  "hidden_act": "gelu",
+  "hidden_dropout_prob": 0.1,
+  "hidden_size": 2048,
+  "initializer_range": 0.02,
+  "inner_group_num": 1,
+  "intermediate_size": 8192,
+  "layer_norm_eps": 1e-12,
+  "max_position_embeddings": 512,
+  "model_type": "albert",
+  "net_structure_type": 0,
+  "num_attention_heads": 16,
+  "num_hidden_groups": 1,
+  "num_hidden_layers": 24,
+  "num_memory_blocks": 0,
+  "pad_token_id": 0,
+  "tie_word_embeddings": true,
+  "transformers_version": "5.8.0",
+  "type_vocab_size": 2,
+  "vocab_size": 30000
+}
+
+[INFO|modeling_utils.py:769] 2026-05-12 16:57:30,848 >> loading weights file model.safetensors from cache at /home/hugh/.cache/huggingface/hub/models--albert--albert-xlarge-v1/snapshots/ed6f87d14403b3c459a458fa6aa9dc5c51c517c1/model.safetensors
+[INFO|modeling_utils.py:852] 2026-05-12 16:57:30,849 >> Since the `dtype` attribute can't be found in model's config object, will use dtype=torch.float32 as derived from model's weights
+[WARNING|loading_report.py:269] 2026-05-12 16:57:30,869 >> [1mAlbertWithEarlyExits LOAD REPORT[0m from: albert/albert-xlarge-v1
+Key                               | Status     | 
+----------------------------------+------------+-
+predictions.bias                  | [38;5;208mUNEXPECTED[0m | 
+predictions.dense.bias            | [38;5;208mUNEXPECTED[0m | 
+predictions.LayerNorm.weight      | [38;5;208mUNEXPECTED[0m | 
+predictions.decoder.bias          | [38;5;208mUNEXPECTED[0m | 
+predictions.dense.weight          | [38;5;208mUNEXPECTED[0m | 
+predictions.LayerNorm.bias        | [38;5;208mUNEXPECTED[0m | 
+early_classifiers.{0...22}.bias   | [31mMISSING[0m    | 
+early_classifiers.{0...22}.weight | [31mMISSING[0m    | 
+classifier.weight                 | [31mMISSING[0m    | 
+classifier.bias                   | [31mMISSING[0m    | 
+early_temperatures                | [31mMISSING[0m    | 
+
+Notes:
+- [38;5;208mUNEXPECTED:[0m	[3mcan be ignored when loading from different task/architecture; not ok if you expect identical arch.[0m
+- [31mMISSING:[0m	[3mthose params were newly initialized because missing from the checkpoint. Consider training on your downstream task.[0m
+[INFO|train_cat.py:410] 2026-05-12 16:57:31,036 >> Sample 5238 of the training set: {'sentence1': 'Didier Reynders on Syria', 'sentence2': "Obama's day: Prime time on Syria", 'label': 1.600000023841858, 'idx': 5238, 'input_ids': [2, 144, 1944, 11009, 16706, 18, 27, 7741, 3, 7677, 22, 18, 208, 45, 1621, 85, 27, 7741, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 'attention_mask': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}.
+[INFO|train_cat.py:410] 2026-05-12 16:57:31,037 >> Sample 912 of the training set: {'sentence1': 'A man is cleaning the windows.', 'sentence2': 'A man is driving a car.', 'label': 0.4000000059604645, 'idx': 912, 'input_ids': [2, 21, 169, 25, 9724, 14, 1936, 9, 3, 21, 169, 25, 2891, 21, 349, 9, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 'attention_mask': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}.
+[INFO|train_cat.py:410] 2026-05-12 16:57:31,037 >> Sample 204 of the training set: {'sentence1': 'A woman holds a kangaroo.', 'sentence2': 'A woman is picking up a kangaroo.', 'label': 3.25, 'idx': 204, 'input_ids': [2, 21, 524, 2763, 21, 21335, 9, 3, 21, 524, 25, 7833, 71, 21, 21335, 9, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 'attention_mask': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}.
+[INFO|trainer.py:1094] 2026-05-12 16:57:31,699 >> The following columns in the Training set don't have a corresponding argument in `AlbertWithEarlyExits.forward` and have been ignored: sentence1, sentence2, idx. If sentence1, sentence2, idx are not expected by `AlbertWithEarlyExits.forward`,  you can safely ignore this message.
+[INFO|trainer.py:1469] 2026-05-12 16:57:31,701 >> ***** Running training *****
+[INFO|trainer.py:1470] 2026-05-12 16:57:31,701 >>   Num examples = 5,749
+[INFO|trainer.py:1471] 2026-05-12 16:57:31,701 >>   Num Epochs = 3
+[INFO|trainer.py:1472] 2026-05-12 16:57:31,701 >>   Num update steps per epoch = 719
+[INFO|trainer.py:1473] 2026-05-12 16:57:31,702 >>   Instantaneous batch size per device = 8
+[INFO|trainer.py:1476] 2026-05-12 16:57:31,702 >>   Total train batch size (w. parallel, distributed & accumulation) = 8
+[INFO|trainer.py:1477] 2026-05-12 16:57:31,702 >>   Gradient Accumulation steps = 1
+[INFO|trainer.py:1478] 2026-05-12 16:57:31,702 >>   Total optimization steps = 2,157
+[INFO|trainer.py:1479] 2026-05-12 16:57:31,702 >>   Number of trainable parameters = 58,774,063
+[WARNING|logging.py:340] 2026-05-12 16:57:31,706 >> `use_return_dict` is deprecated! Use `return_dict` instead!
+05/12/2026 17:00:23 - WARNING - __main__ -   Process rank: -1, device: cpu, n_gpu: 0distributed training: False, 16-bits training: False
+[INFO|train_cat.py:219] 2026-05-12 17:00:23,480 >> Training/evaluation parameters EarlyTrainingArguments(
+accelerator_config={'split_batches': False, 'dispatch_batches': None, 'even_batches': True, 'use_seedable_sampler': True, 'non_blocking': False, 'gradient_accumulation_kwargs': None, 'use_configured_state': False},
+adam_beta1=0.9,
+adam_beta2=0.999,
+adam_epsilon=1e-08,
+auto_find_batch_size=False,
+average_tokens_across_devices=True,
+batch_eval_metrics=False,
+bf16=False,
+bf16_full_eval=False,
+data_seed=None,
+dataloader_drop_last=False,
+dataloader_num_workers=0,
+dataloader_persistent_workers=False,
+dataloader_pin_memory=True,
+dataloader_prefetch_factor=None,
+ddp_backend=None,
+ddp_broadcast_buffers=None,
+ddp_bucket_cap_mb=None,
+ddp_find_unused_parameters=None,
+ddp_static_graph=None,
+ddp_timeout=1800,
+debug=[],
+deepspeed=None,
+disable_tqdm=False,
+do_eval=False,
+do_predict=False,
+do_predict_eval=False,
+do_test=False,
+do_train=True,
+enable_jit_checkpoint=False,
+eval_accumulation_steps=None,
+eval_delay=0,
+eval_do_concat_batches=True,
+eval_on_start=False,
+eval_steps=None,
+eval_strategy=IntervalStrategy.NO,
+eval_use_gather_object=False,
+fp16=False,
+fp16_full_eval=False,
+fsdp=[],
+fsdp_config={'min_num_params': 0, 'xla': False, 'xla_fsdp_v2': False, 'xla_fsdp_grad_ckpt': False},
+full_determinism=False,
+gradient_accumulation_steps=1,
+gradient_checkpointing=False,
+gradient_checkpointing_kwargs=None,
+greater_is_better=None,
+hub_always_push=False,
+hub_model_id=None,
+hub_private_repo=None,
+hub_revision=None,
+hub_strategy=HubStrategy.EVERY_SAVE,
+hub_token=<HUB_TOKEN>,
+ignore_data_skip=False,
+include_for_metrics=[],
+include_num_input_tokens_seen=no,
+label_names=None,
+label_smoothing_factor=0.0,
+learning_rate=5e-05,
+length_column_name=length,
+liger_kernel_config=None,
+load_best_model_at_end=False,
+local_rank=-1,
+log_level=passive,
+log_level_replica=warning,
+log_on_each_node=True,
+logging_dir=None,
+logging_first_step=False,
+logging_nan_inf_filter=True,
+logging_steps=500,
+logging_strategy=IntervalStrategy.STEPS,
+lr_scheduler_kwargs=None,
+lr_scheduler_type=SchedulerType.LINEAR,
+max_grad_norm=1.0,
+max_steps=-1,
+meta_iterations=None,
+meta_learning_rate=None,
+metric_for_best_model=None,
+neftune_noise_alpha=None,
+num_train_epochs=3.0,
+optim=OptimizerNames.ADAMW_TORCH_FUSED,
+optim_args=None,
+optim_target_modules=None,
+output_dir=model_output,
+parallelism_config=None,
+per_device_eval_batch_size=8,
+per_device_train_batch_size=8,
+prediction_loss_only=False,
+project=huggingface,
+push_to_hub=False,
+remove_unused_columns=True,
+report_to=[],
+restore_callback_states_from_checkpoint=False,
+resume_from_checkpoint=None,
+run_name=None,
+save_on_each_node=False,
+save_only_model=False,
+save_steps=500,
+save_strategy=SaveStrategy.STEPS,
+save_total_limit=None,
+scaling_iterations=None,
+seed=42,
+skip_memory_metrics=True,
+tf32=None,
+torch_compile=False,
+torch_compile_backend=None,
+torch_compile_mode=None,
+torch_empty_cache_steps=None,
+trackio_bucket_id=None,
+trackio_space_id=None,
+trackio_static_space_id=None,
+train_sampling_strategy=random,
+use_cache=False,
+use_cpu=False,
+use_liger_kernel=False,
+warmup_ratio=None,
+warmup_steps=0,
+weight_decay=0.0,
+)
+[INFO|train_cat.py:250] 2026-05-12 17:00:23,481 >> load a local file for train: None
+[INFO|train_cat.py:250] 2026-05-12 17:00:23,481 >> load a local file for validation: None
+[WARNING|_http.py:904] 2026-05-12 17:00:23,912 >> Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[INFO|configuration_utils.py:780] 2026-05-12 17:00:26,109 >> loading configuration file config.json from cache at /home/hugh/.cache/huggingface/hub/models--albert--albert-xlarge-v1/snapshots/ed6f87d14403b3c459a458fa6aa9dc5c51c517c1/config.json
+[INFO|configuration_utils.py:856] 2026-05-12 17:00:26,110 >> Model config AlbertConfig {
+  "architectures": [
+    "AlbertForMaskedLM"
+  ],
+  "attention_probs_dropout_prob": 0.1,
+  "bos_token_id": 2,
+  "classifier_dropout_prob": 0.1,
+  "down_scale_factor": 1,
+  "embedding_size": 128,
+  "eos_token_id": 3,
+  "gap_size": 0,
+  "hidden_act": "gelu",
+  "hidden_dropout_prob": 0.1,
+  "hidden_size": 2048,
+  "id2label": {
+    "0": "LABEL_0"
+  },
+  "initializer_range": 0.02,
+  "inner_group_num": 1,
+  "intermediate_size": 8192,
+  "label2id": {
+    "LABEL_0": 0
+  },
+  "layer_norm_eps": 1e-12,
+  "max_position_embeddings": 512,
+  "model_type": "albert",
+  "net_structure_type": 0,
+  "num_attention_heads": 16,
+  "num_hidden_groups": 1,
+  "num_hidden_layers": 24,
+  "num_memory_blocks": 0,
+  "pad_token_id": 0,
+  "tie_word_embeddings": true,
+  "transformers_version": "5.8.0",
+  "type_vocab_size": 2,
+  "vocab_size": 30000
+}
+
+[INFO|configuration_utils.py:780] 2026-05-12 17:00:26,218 >> loading configuration file config.json from cache at /home/hugh/.cache/huggingface/hub/models--albert--albert-xlarge-v1/snapshots/ed6f87d14403b3c459a458fa6aa9dc5c51c517c1/config.json
+[INFO|configuration_utils.py:856] 2026-05-12 17:00:26,218 >> Model config AlbertConfig {
+  "architectures": [
+    "AlbertForMaskedLM"
+  ],
+  "attention_probs_dropout_prob": 0.1,
+  "bos_token_id": 2,
+  "classifier_dropout_prob": 0.1,
+  "down_scale_factor": 1,
+  "embedding_size": 128,
+  "eos_token_id": 3,
+  "gap_size": 0,
+  "hidden_act": "gelu",
+  "hidden_dropout_prob": 0.1,
+  "hidden_size": 2048,
+  "initializer_range": 0.02,
+  "inner_group_num": 1,
+  "intermediate_size": 8192,
+  "layer_norm_eps": 1e-12,
+  "max_position_embeddings": 512,
+  "model_type": "albert",
+  "net_structure_type": 0,
+  "num_attention_heads": 16,
+  "num_hidden_groups": 1,
+  "num_hidden_layers": 24,
+  "num_memory_blocks": 0,
+  "pad_token_id": 0,
+  "tie_word_embeddings": true,
+  "transformers_version": "5.8.0",
+  "type_vocab_size": 2,
+  "vocab_size": 30000
+}
+
+[INFO|modeling_utils.py:769] 2026-05-12 17:00:26,771 >> loading weights file model.safetensors from cache at /home/hugh/.cache/huggingface/hub/models--albert--albert-xlarge-v1/snapshots/ed6f87d14403b3c459a458fa6aa9dc5c51c517c1/model.safetensors
+[INFO|modeling_utils.py:852] 2026-05-12 17:00:26,771 >> Since the `dtype` attribute can't be found in model's config object, will use dtype=torch.float32 as derived from model's weights
+[WARNING|loading_report.py:269] 2026-05-12 17:00:26,792 >> [1mAlbertWithEarlyExits LOAD REPORT[0m from: albert/albert-xlarge-v1
+Key                               | Status     | 
+----------------------------------+------------+-
+predictions.bias                  | [38;5;208mUNEXPECTED[0m | 
+predictions.LayerNorm.bias        | [38;5;208mUNEXPECTED[0m | 
+predictions.LayerNorm.weight      | [38;5;208mUNEXPECTED[0m | 
+predictions.dense.bias            | [38;5;208mUNEXPECTED[0m | 
+predictions.decoder.bias          | [38;5;208mUNEXPECTED[0m | 
+predictions.dense.weight          | [38;5;208mUNEXPECTED[0m | 
+early_classifiers.{0...22}.weight | [31mMISSING[0m    | 
+early_classifiers.{0...22}.bias   | [31mMISSING[0m    | 
+classifier.bias                   | [31mMISSING[0m    | 
+classifier.weight                 | [31mMISSING[0m    | 
+early_temperatures                | [31mMISSING[0m    | 
+
+Notes:
+- [38;5;208mUNEXPECTED:[0m	[3mcan be ignored when loading from different task/architecture; not ok if you expect identical arch.[0m
+- [31mMISSING:[0m	[3mthose params were newly initialized because missing from the checkpoint. Consider training on your downstream task.[0m
+[INFO|train_cat.py:410] 2026-05-12 17:00:26,968 >> Sample 5238 of the training set: {'sentence1': 'Didier Reynders on Syria', 'sentence2': "Obama's day: Prime time on Syria", 'label': 1.600000023841858, 'idx': 5238, 'input_ids': [2, 144, 1944, 11009, 16706, 18, 27, 7741, 3, 7677, 22, 18, 208, 45, 1621, 85, 27, 7741, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 'attention_mask': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}.
+[INFO|train_cat.py:410] 2026-05-12 17:00:26,968 >> Sample 912 of the training set: {'sentence1': 'A man is cleaning the windows.', 'sentence2': 'A man is driving a car.', 'label': 0.4000000059604645, 'idx': 912, 'input_ids': [2, 21, 169, 25, 9724, 14, 1936, 9, 3, 21, 169, 25, 2891, 21, 349, 9, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 'attention_mask': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}.
+[INFO|train_cat.py:410] 2026-05-12 17:00:26,968 >> Sample 204 of the training set: {'sentence1': 'A woman holds a kangaroo.', 'sentence2': 'A woman is picking up a kangaroo.', 'label': 3.25, 'idx': 204, 'input_ids': [2, 21, 524, 2763, 21, 21335, 9, 3, 21, 524, 25, 7833, 71, 21, 21335, 9, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 'attention_mask': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}.
+[INFO|trainer.py:1094] 2026-05-12 17:00:27,638 >> The following columns in the Training set don't have a corresponding argument in `AlbertWithEarlyExits.forward` and have been ignored: idx, sentence1, sentence2. If idx, sentence1, sentence2 are not expected by `AlbertWithEarlyExits.forward`,  you can safely ignore this message.
+[INFO|trainer.py:1469] 2026-05-12 17:00:27,641 >> ***** Running training *****
+[INFO|trainer.py:1470] 2026-05-12 17:00:27,641 >>   Num examples = 5,749
+[INFO|trainer.py:1471] 2026-05-12 17:00:27,641 >>   Num Epochs = 3
+[INFO|trainer.py:1472] 2026-05-12 17:00:27,641 >>   Num update steps per epoch = 719
+[INFO|trainer.py:1473] 2026-05-12 17:00:27,641 >>   Instantaneous batch size per device = 8
+[INFO|trainer.py:1476] 2026-05-12 17:00:27,641 >>   Total train batch size (w. parallel, distributed & accumulation) = 8
+[INFO|trainer.py:1477] 2026-05-12 17:00:27,641 >>   Gradient Accumulation steps = 1
+[INFO|trainer.py:1478] 2026-05-12 17:00:27,641 >>   Total optimization steps = 2,157
+[INFO|trainer.py:1479] 2026-05-12 17:00:27,641 >>   Number of trainable parameters = 58,774,063
+[WARNING|logging.py:340] 2026-05-12 17:00:27,654 >> `use_return_dict` is deprecated! Use `return_dict` instead!
