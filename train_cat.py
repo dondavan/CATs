@@ -269,12 +269,12 @@ def main():
             label_list = datasets["train"].features["label"].names
             num_labels = len(label_list)
         else:
-            num_labels = 1
+            num_labels = 64
     else:
         # Trying to have good defaults here, don't hesitate to tweak to your needs.
         is_regression = datasets["train"].features["label"].dtype in ["float32", "float64"]
         if is_regression:
-            num_labels = 1
+            num_labels = 64
         else:
             # A useful fast method:
             # https://huggingface.co/docs/datasets/package_reference/main_classes.html#datasets.Dataset.unique
@@ -292,8 +292,9 @@ def main():
         finetuning_task=data_args.task_name,
         cache_dir=model_args.cache_dir,
         revision=model_args.model_revision,
-        #use_auth_token=True if model_args.use_auth_token else None,
     )
+    # Fix: use return_dict instead of deprecated use_return_dict
+    config.return_dict = False
     config.use_history_logits = model_args.use_history_logits
     config.use_early_poolers = model_args.use_early_poolers
     config.use_consistency_loss = model_args.use_consistency_loss
@@ -317,6 +318,7 @@ def main():
         revision=model_args.model_revision,
         ignore_mismatched_sizes=True,
     )
+    logger.info(f"Model {model_args.model_name_or_path} loaded with config: {config}")
     print(model)
     print(training_args)
     print("Preprocessing the datasets.")

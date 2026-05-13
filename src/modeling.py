@@ -142,11 +142,22 @@ class AlbertWithEarlyExits(AlbertForSequenceClassification):
             else:
                 hidden_cls_size = config.early_pooler_hidden_size if self.use_early_poolers else config.hidden_size
                 if self.num_labels == 1:
+                    """ Modify
                     self.meta_poolers = nn.ModuleList([nn.Linear(hidden_cls_size + (self.num_inner_classifiers - 1),
                                                     config.early_pooler_hidden_size)
                                                    for _ in range(self.num_inner_classifiers)])
+                    """
+                    self.meta_poolers = nn.ModuleList([nn.Linear(hidden_cls_size,
+                                                    config.early_pooler_hidden_size)
+                                                   for _ in range(self.num_inner_classifiers)])
                 else:
+                    """
+                    Modify
                     self.meta_poolers = nn.ModuleList([nn.Linear(config.num_labels + hidden_cls_size + 2 + (self.num_inner_classifiers - 1),
+                                                    config.early_pooler_hidden_size)
+                                                   for _ in range(self.num_inner_classifiers)])
+                    """
+                    self.meta_poolers = nn.ModuleList([nn.Linear(hidden_cls_size,
                                                     config.early_pooler_hidden_size)
                                                    for _ in range(self.num_inner_classifiers)])
 
@@ -312,6 +323,9 @@ class AlbertWithEarlyExits(AlbertForSequenceClassification):
 
         loss = None
         if not self.meta_training_mode and (labels is not None or self.use_consistency_loss):
+            # Fix: cast labels to Long for CrossEntropyLoss
+            if labels is not None:
+                labels = labels.long()
             loss = 0.0
             #  Average over all intermediate losses
             # TODO: use view to avoid the for loop
@@ -334,6 +348,8 @@ class AlbertWithEarlyExits(AlbertForSequenceClassification):
 
         if self.meta_training_mode:
             loss = 0.0
+            # Fix: cast labels to Long for CrossEntropyLoss
+            labels = labels.long()
             top_correct = all_logits[:,-1,:].argmax(-1).view(-1).eq(labels.view(-1)).long()
             for i in range(self.num_inner_classifiers):
                 if self.num_labels == 1:
