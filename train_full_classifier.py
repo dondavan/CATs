@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
-from datasets import load_dataset
+from datasets import load_dataset, Value
 import evaluate
 
 import transformers
@@ -61,6 +61,22 @@ task_to_keys = {
 }
 
 logger = logging.getLogger(__name__)
+
+# STS-B scores (0-5) are discretised into this many classes, matching train_cat.py.
+NUM_BINS = 64
+STSB_MAX_SCORE = 5.0
+
+
+def score_to_bin(score):
+    return min(int(score / STSB_MAX_SCORE * NUM_BINS), NUM_BINS - 1)
+
+
+@dataclass
+class FullTrainingArguments(TrainingArguments):
+    # Removed from TrainingArguments in transformers 5.x; kept here for the output-dir check below.
+    overwrite_output_dir: bool = field(
+        default=False, metadata={"help": "Overwrite the content of the output directory."}
+    )
 
 
 @dataclass
@@ -183,7 +199,7 @@ def main():
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
+    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, FullTrainingArguments))
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
@@ -275,24 +291,27 @@ def main():
     # https://huggingface.co/docs/datasets/loading_datasets.html.
 
     # Labels
+    # Regression targets (e.g. STS-B) are binned into NUM_BINS classes so the
+    # top classifier has the same shape as the CAT model in train_cat.py.
+    bin_labels = False
     if data_args.task_name is not None:
-        is_regression = data_args.task_name == "stsb"
-        if not is_regression:
+        bin_labels = data_args.task_name == "stsb"
+        if not bin_labels:
             label_list = datasets["train"].features["label"].names
             num_labels = len(label_list)
-        else:
-            num_labels = 1
     else:
         # Trying to have good defaults here, don't hesitate to tweak to your needs.
-        is_regression = datasets["train"].features["label"].dtype in ["float32", "float64"]
-        if is_regression:
-            num_labels = 1
-        else:
+        bin_labels = datasets["train"].features["label"].dtype in ["float32", "float64"]
+        if not bin_labels:
             # A useful fast method:
             # https://huggingface.co/docs/datasets/package_reference/main_classes.html#datasets.Dataset.unique
             label_list = datasets["train"].unique("label")
             label_list.sort()  # Let's sort it for determinism
             num_labels = len(label_list)
+    if bin_labels:
+        label_list = list(range(NUM_BINS))
+        num_labels = NUM_BINS
+    is_regression = False
 
     # Load pretrained model and tokenizer
     #
@@ -360,7 +379,7 @@ def main():
                 f"model labels: {list(sorted(label_name_to_id.keys()))}, dataset labels: {list(sorted(label_list))}."
                 "\nIgnoring the model labels as a result.",
             )
-    elif data_args.task_name is None and not is_regression:
+    elif data_args.task_name is None and not bin_labels:
         label_to_id = {v: i for i, v in enumerate(label_list)}
 
     if data_args.max_seq_length > tokenizer.model_max_length:
@@ -380,9 +399,13 @@ def main():
         # Map labels to IDs (not necessary for GLUE tasks)
         if label_to_id is not None and "label" in examples:
             result["label"] = [(label_to_id[l] if l != -1 else -1) for l in examples["label"]]
+        elif bin_labels and "label" in examples:
+            result["label"] = [(score_to_bin(l) if l >= 0 else -1) for l in examples["label"]]
         return result
 
     datasets = datasets.map(preprocess_function, batched=True, load_from_cache_file=not data_args.overwrite_cache)
+    if bin_labels:
+        datasets = datasets.cast_column("label", Value("int64"))
     if training_args.do_train:
         if "train" not in datasets:
             raise ValueError("--do_train requires a train dataset")

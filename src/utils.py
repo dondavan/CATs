@@ -9,7 +9,8 @@ def write_predictions(cls_logits, meta_logits, id2label, gold_labels, output_pre
     with open(output_pred_file, "w") as writer:
         for i in range(len(cls_logits)):
             ex_logits = cls_logits[i]
-            ex_pred_label = [id2label[p] for p in pred_labels[i]]
+            # pred_labels[i] is a scalar when logits are (N, C) rather than (N, L, C)
+            ex_pred_label = [id2label[int(p)] for p in np.atleast_1d(pred_labels[i])]
 
             # Counting consecutive similar predictions
             patience = [0] * len(ex_pred_label)
@@ -29,8 +30,8 @@ def write_predictions(cls_logits, meta_logits, id2label, gold_labels, output_pre
                     "layer_probs": torch.softmax(torch.tensor(ex_logits), -1).tolist(),
                     "predicted_labels": ex_pred_label,
                     "patience": patience,
-                    "gold_label_ind": gold_labels[i],
-                    "gold_label": id2label[gold_labels[i]],
+                    "gold_label_ind": int(gold_labels[i]),
+                    "gold_label": id2label[int(gold_labels[i])],
                 }
             if meta_logits is not None:
                 ex_meta_logits = meta_logits[i]

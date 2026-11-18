@@ -141,24 +141,14 @@ class AlbertWithEarlyExits(AlbertForSequenceClassification):
                 self.meta_predictor = nn.Linear(config.early_pooler_hidden_size, 2)
             else:
                 hidden_cls_size = config.early_pooler_hidden_size if self.use_early_poolers else config.hidden_size
+                # Input = features concatenated in run_meta_predictors:
+                #   regression:      cls + history (n-2) + progress (1)                        = cls + n-1
+                #   classification:  pred_class + cls + max_prob + max_diff + history + progress = labels + cls + 2 + n-1
                 if self.num_labels == 1:
-                    """ Modify
-                    self.meta_poolers = nn.ModuleList([nn.Linear(hidden_cls_size + (self.num_inner_classifiers - 1),
-                                                    config.early_pooler_hidden_size)
-                                                   for _ in range(self.num_inner_classifiers)])
-                    """
-                    self.meta_poolers = nn.ModuleList([nn.Linear(hidden_cls_size,
-                                                    config.early_pooler_hidden_size)
-                                                   for _ in range(self.num_inner_classifiers)])
+                    meta_in = hidden_cls_size + (self.num_inner_classifiers - 1)
                 else:
-                    """
-                    Modify
-                    self.meta_poolers = nn.ModuleList([nn.Linear(config.num_labels + hidden_cls_size + 2 + (self.num_inner_classifiers - 1),
-                                                    config.early_pooler_hidden_size)
-                                                   for _ in range(self.num_inner_classifiers)])
-                    """
-                    self.meta_poolers = nn.ModuleList([nn.Linear(hidden_cls_size,
-                                                    config.early_pooler_hidden_size)
+                    meta_in = config.num_labels + hidden_cls_size + 2 + (self.num_inner_classifiers - 1)
+                self.meta_poolers = nn.ModuleList([nn.Linear(meta_in, config.early_pooler_hidden_size)
                                                    for _ in range(self.num_inner_classifiers)])
 
                 self.meta_predictors = nn.ModuleList([nn.Linear(config.early_pooler_hidden_size, 2)

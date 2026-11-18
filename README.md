@@ -54,6 +54,21 @@ python3 train_cat.py \
     --task_name=stsb \
     --output-dir=model_output \
     --do_train=True \
+    --do_eval --do_predict_eval \
+    --use_early_poolers=True \
+    --use_meta_predictors=True \
+    --use_history_logits=False \
+    --early_pooler_hidden_siz=2048 \
+    --num_train_epochs=1
+```
+
+```bash
+python3 train_cat.py \
+    --model_name_or_path=albert/albert-base-v2 \
+    --task_name=stsb \
+    --output-dir=model_output \
+    --do_train=True \
+    --do_eval --do_predict_eval \
     --use_early_poolers=True \
     --use_meta_predictors=True \
     --use_history_logits=False \

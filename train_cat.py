@@ -30,7 +30,7 @@ from typing import Optional
 from copy import deepcopy
 
 import numpy as np
-from datasets import load_dataset
+from datasets import load_dataset, Value
 import evaluate
 
 import transformers
@@ -71,6 +71,10 @@ class EarlyTrainingArguments(TrainingArguments):
     meta_learning_rate: float = field(
         default=None, metadata={"help": "Learning rate for the meta training (None->learning_rate)."}
     )
+    # Removed from TrainingArguments in transformers 5.x; accepted here so the flag still parses.
+    overwrite_output_dir: bool = field(
+        default=False, metadata={"help": "Overwrite the content of the output directory."}
+    )
 
 
 
@@ -90,6 +94,14 @@ task_to_keys = {
 }
 
 logger = logging.getLogger(__name__)
+
+# STS-B scores (0-5) are discretised into this many classes (same as train_full_classifier.py).
+NUM_BINS = 64
+STSB_MAX_SCORE = 5.0
+
+
+def score_to_bin(score):
+    return min(int(score / STSB_MAX_SCORE * NUM_BINS), NUM_BINS - 1)
 
 
 @dataclass
@@ -263,24 +275,27 @@ def main():
     # https://huggingface.co/docs/datasets/loading_datasets.html.
 
     # Labels
+    # Regression targets (e.g. STS-B, 0-5) are binned into NUM_BINS classes,
+    # identical to train_full_classifier.py, so the top classifier loads unchanged.
+    bin_labels = False
     if data_args.task_name is not None:
-        is_regression = data_args.task_name == "stsb"
-        if not is_regression:
+        bin_labels = data_args.task_name == "stsb"
+        if not bin_labels:
             label_list = datasets["train"].features["label"].names
             num_labels = len(label_list)
-        else:
-            num_labels = 64
     else:
         # Trying to have good defaults here, don't hesitate to tweak to your needs.
-        is_regression = datasets["train"].features["label"].dtype in ["float32", "float64"]
-        if is_regression:
-            num_labels = 64
-        else:
+        bin_labels = datasets["train"].features["label"].dtype in ["float32", "float64"]
+        if not bin_labels:
             # A useful fast method:
             # https://huggingface.co/docs/datasets/package_reference/main_classes.html#datasets.Dataset.unique
             label_list = datasets["train"].unique("label")
             label_list.sort()  # Let's sort it for determinism
             num_labels = len(label_list)
+    if bin_labels:
+        label_list = list(range(NUM_BINS))
+        num_labels = NUM_BINS
+    is_regression = False
 
     # Load pretrained model and tokenizer
     #
@@ -360,7 +375,7 @@ def main():
                 f"model labels: {list(sorted(label_name_to_id.keys()))}, dataset labels: {list(sorted(label_list))}."
                 "\nIgnoring the model labels as a result.",
             )
-    elif data_args.task_name is None and not is_regression:
+    elif data_args.task_name is None and not bin_labels:
         label_to_id = {v: i for i, v in enumerate(label_list)}
 
     if data_args.max_seq_length > tokenizer.model_max_length:
@@ -380,9 +395,13 @@ def main():
         # Map labels to IDs (not necessary for GLUE tasks)
         if label_to_id is not None and "label" in examples:
             result["label"] = [(label_to_id[l] if l != -1 else -1) for l in examples["label"]]
+        elif bin_labels and "label" in examples:
+            result["label"] = [(score_to_bin(l) if l >= 0 else -1) for l in examples["label"]]
         return result
 
     datasets = datasets.map(preprocess_function, batched=True, load_from_cache_file=not data_args.overwrite_cache)
+    if bin_labels:
+        datasets = datasets.cast_column("label", Value("int64"))
     
     print("datasets. loaded and preprocessed")
     if training_args.do_train:
