@@ -1,0 +1,22 @@
+{
+    "task_name": "stsb",
+    "model_name_or_path": "/var/scratch/hxu/results/full_model_stsb",
+    "tokenizer_name": "albert/albert-base-v2",
+    "output_dir": "/var/scratch/hxu/results/cat_model_stsb",
+    "overwrite_output_dir": true,
+    "do_train": true,
+    "do_eval": true,
+    "do_predict_eval": true,
+    "num_train_epochs": 1,
+    "per_device_train_batch_size": 16,
+    "per_device_eval_batch_size": 64,
+    "learning_rate": 2e-5,
+    "max_seq_length": 128,
+    "seed": 42,
+    "save_strategy": "no",
+    "fp16": false,
+    "use_early_poolers": true,
+    "use_meta_predictors": true,
+    "use_history_logits": false,
+    "early_pooler_hidden_size": 2048
+}

@@ -162,6 +162,51 @@ class AlbertWithEarlyExits(AlbertForSequenceClassification):
         self.meta_training_mode = False
         self.meta_eval_mode = False
 
+    # Parameters that belong to CATs (not part of the fine-tuned ALBERT checkpoint).
+    CAT_MODULES = ("early_poolers", "early_classifiers", "meta_poolers",
+                   "meta_predictors", "meta_pooler", "meta_predictor")
+
+    def init_cat_params(self, missing_keys):
+        """Initialise CAT parameters that were not in the checkpoint.
+
+        transformers 5.x allocates missing parameters with torch.empty and its
+        _init_weights does not know about the bare `early_temperatures`
+        Parameter, so they can contain garbage/NaN. Anything missing (or
+        non-finite) is initialised explicitly here.
+        """
+        missing_keys = set(missing_keys)
+        done = []
+        with torch.no_grad():
+            t = self.early_temperatures
+            if "early_temperatures" in missing_keys or not torch.isfinite(t).all() or (t <= 0).any():
+                t.fill_(1.0)
+                done.append("early_temperatures")
+            for name, module in self.named_modules():
+                if not isinstance(module, nn.Linear) or name.split(".")[0] not in self.CAT_MODULES:
+                    continue
+                params = [module.weight] + ([module.bias] if module.bias is not None else [])
+                if f"{name}.weight" in missing_keys or not all(torch.isfinite(p).all() for p in params):
+                    module.weight.normal_(0.0, self.config.initializer_range)
+                    if module.bias is not None:
+                        module.bias.zero_()
+                    done.append(name)
+        return done
+
+    def freeze_backbone(self):
+        """Keep the fine-tuned ALBERT and top classifier fixed; only CAT heads train.
+
+        The forward pass already runs them under no_grad, but with DataParallel
+        they still receive zero gradients, so a NaN gradient norm in clipping
+        would turn them NaN too. requires_grad=False removes them from the optimizer.
+        """
+        for p in self.albert.parameters():
+            p.requires_grad = False
+        for p in self.classifier.parameters():
+            p.requires_grad = False
+
+    def nonfinite_params(self):
+        return [n for n, p in self.named_parameters() if not torch.isfinite(p).all()]
+
     def run_early_classifiers(self, top_logits, outputs):
         all_logits = top_logits.new_zeros(
                                 top_logits.shape[0],  # Batch size
@@ -365,11 +410,13 @@ class AlbertWithEarlyExits(AlbertForSequenceClassification):
             loss /= self.num_inner_classifiers
 
         if not return_dict:
+            # Include meta logits so Trainer returns (cls_logits, meta_logits).
+            output = (all_logits,) if meta_logits is None else (all_logits, meta_logits)
             if output_hidden_states:
-                output = (all_logits,) + outputs[2:]
+                output = output + outputs[2:]
             else:
                 # Correct the override of output_hidden_states
-                output = (all_logits,) + outputs[3:]
+                output = output + outputs[3:]
             return ((loss,) + output) if loss is not None else output
 
         return EarlyExitSequenceClassifierOutput(

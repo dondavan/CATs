@@ -461,14 +461,14 @@ def main():
     else:
         data_collator = None
 
-    # Initialize our Trainer
+    # Initialize our Trainers
     trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset if training_args.do_train else None,
         eval_dataset=eval_dataset if training_args.do_eval else None,
         compute_metrics=compute_metrics,
-        #tokenizer=tokenizer,
+        #tokenizer=tokenizer, Removed as not needed for Transformer 5.x
         data_collator=data_collator,
     )
 

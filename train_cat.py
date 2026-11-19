@@ -325,14 +325,28 @@ def main():
         revision=model_args.model_revision,
         #use_auth_token=True if model_args.use_auth_token else None,
     )
-    model = AlbertWithEarlyExits.from_pretrained(
+    model, loading_info = AlbertWithEarlyExits.from_pretrained(
         model_args.model_name_or_path,
         from_tf=bool(".ckpt" in model_args.model_name_or_path),
         config=config,
         cache_dir=model_args.cache_dir,
         revision=model_args.model_revision,
         ignore_mismatched_sizes=True,
+        output_loading_info=True,
     )
+    # Initialise CAT heads missing from the checkpoint (may be uninitialised memory in transformers 5.x).
+    initialised = model.init_cat_params(loading_info.get("missing_keys", []))
+    logger.info(f"Initialised CAT parameters: {initialised}")
+    if loading_info.get("mismatched_keys"):
+        logger.warning(f"Re-initialised due to size mismatch (top classifier NOT loaded!): "
+                       f"{loading_info['mismatched_keys']}")
+    # Only the early/meta heads are trained; ALBERT + top classifier stay as in stage 1.
+    model.freeze_backbone()
+    bad = model.nonfinite_params()
+    if bad:
+        raise ValueError(f"Non-finite parameters after loading: {bad}")
+    n_trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logger.info(f"Trainable parameters (CAT heads only): {n_trainable:,}")
     logger.info(f"Model {model_args.model_name_or_path} loaded with config: {config}")
     print(model)
     print(training_args)
@@ -644,7 +658,8 @@ def main():
             cls_logits = predictions[0]
             meta_logits = predictions[1]
         else:
-            cls_logits = predictions[0]
+            # Shape (num_examples, num_layers, num_labels); don't index [0] (that's one example).
+            cls_logits = predictions
         output_pred_file = os.path.join(
             training_args.output_dir, f"eval_preds.jsonl"
         )
@@ -675,7 +690,7 @@ def main():
                     cls_logits = predictions[0]
                     meta_logits = predictions[1]
                 else:
-                    cls_logits = predictions[0]
+                    cls_logits = predictions
 
                 output_pred_file = os.path.join(
                     training_args.output_dir, f"test_preds_{task}.jsonl"
