@@ -30,7 +30,7 @@ from typing import Optional
 from copy import deepcopy
 
 import numpy as np
-from datasets import load_dataset, Value
+from datasets import load_dataset
 import evaluate
 
 import transformers
@@ -95,14 +95,6 @@ task_to_keys = {
 
 logger = logging.getLogger(__name__)
 
-# STS-B scores (0-5) are discretised into this many classes (same as train_full_classifier.py).
-NUM_BINS = 64
-STSB_MAX_SCORE = 5.0
-
-
-def score_to_bin(score):
-    return min(int(score / STSB_MAX_SCORE * NUM_BINS), NUM_BINS - 1)
-
 
 @dataclass
 class DataTrainingArguments:
@@ -164,6 +156,11 @@ class DataTrainingArguments:
     )
     early_meta_file: str = field(
         default=None, metadata={"help": "Path to file with data training the meta classifier"}
+    )
+    paper_split: bool = field(
+        default=True,
+        metadata={"help": "For GLUE tasks, split the train set 70/10/20 into tune/scale/meta "
+                          "(CATs paper, App. B). Scaling is only used for classification."},
     )
     validation_file: Optional[str] = field(
         default=None, metadata={"help": "A csv or a json file containing the validation data."}
@@ -275,27 +272,26 @@ def main():
     # https://huggingface.co/docs/datasets/loading_datasets.html.
 
     # Labels
-    # Regression targets (e.g. STS-B, 0-5) are binned into NUM_BINS classes,
-    # identical to train_full_classifier.py, so the top classifier loads unchanged.
-    bin_labels = False
+    # STS-B (and float-labelled custom data) is regression: 1 output, MSE loss,
+    # identical to train_full_classifier.py so the top classifier loads unchanged.
     if data_args.task_name is not None:
-        bin_labels = data_args.task_name == "stsb"
-        if not bin_labels:
+        is_regression = data_args.task_name == "stsb"
+        if not is_regression:
             label_list = datasets["train"].features["label"].names
             num_labels = len(label_list)
+        else:
+            num_labels = 1
     else:
         # Trying to have good defaults here, don't hesitate to tweak to your needs.
-        bin_labels = datasets["train"].features["label"].dtype in ["float32", "float64"]
-        if not bin_labels:
+        is_regression = datasets["train"].features["label"].dtype in ["float32", "float64"]
+        if is_regression:
+            num_labels = 1
+        else:
             # A useful fast method:
             # https://huggingface.co/docs/datasets/package_reference/main_classes.html#datasets.Dataset.unique
             label_list = datasets["train"].unique("label")
             label_list.sort()  # Let's sort it for determinism
             num_labels = len(label_list)
-    if bin_labels:
-        label_list = list(range(NUM_BINS))
-        num_labels = NUM_BINS
-    is_regression = False
 
     # Load pretrained model and tokenizer
     #
@@ -318,6 +314,8 @@ def main():
     config.shared_meta = model_args.shared_meta
     config.early_pooler_hidden_size = model_args.early_pooler_hidden_size
     config.regression_tolerance = model_args.regression_tolerance
+    config.early_pooling = model_args.early_pooling
+    logger.info(f"Early-exit pooling: {config.early_pooling}")
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
         cache_dir=model_args.cache_dir,
@@ -337,6 +335,10 @@ def main():
     # Initialise CAT heads missing from the checkpoint (may be uninitialised memory in transformers 5.x).
     initialised = model.init_cat_params(loading_info.get("missing_keys", []))
     logger.info(f"Initialised CAT parameters: {initialised}")
+    # Only warm-start heads that were freshly initialised (not when resuming a CAT checkpoint).
+    if model_args.init_early_from_top and any(n.startswith("early_") for n in initialised):
+        ok = model.init_early_from_top()
+        logger.info(f"Early heads initialised from top pooler/classifier: {ok}")
     if loading_info.get("mismatched_keys"):
         logger.warning(f"Re-initialised due to size mismatch (top classifier NOT loaded!): "
                        f"{loading_info['mismatched_keys']}")
@@ -389,7 +391,7 @@ def main():
                 f"model labels: {list(sorted(label_name_to_id.keys()))}, dataset labels: {list(sorted(label_list))}."
                 "\nIgnoring the model labels as a result.",
             )
-    elif data_args.task_name is None and not bin_labels:
+    elif data_args.task_name is None and not is_regression:
         label_to_id = {v: i for i, v in enumerate(label_list)}
 
     if data_args.max_seq_length > tokenizer.model_max_length:
@@ -409,13 +411,24 @@ def main():
         # Map labels to IDs (not necessary for GLUE tasks)
         if label_to_id is not None and "label" in examples:
             result["label"] = [(label_to_id[l] if l != -1 else -1) for l in examples["label"]]
-        elif bin_labels and "label" in examples:
-            result["label"] = [(score_to_bin(l) if l >= 0 else -1) for l in examples["label"]]
         return result
 
     datasets = datasets.map(preprocess_function, batched=True, load_from_cache_file=not data_args.overwrite_cache)
-    if bin_labels:
-        datasets = datasets.cast_column("label", Value("int64"))
+
+    # CATs paper (App. B): reuse F's training data, split 70/10/20 into
+    # D_tune (early heads), D_scale (temperature scaling) and D_meta (meta classifiers).
+    use_scaling = data_args.early_scaling_file is not None
+    use_meta = data_args.early_meta_file is not None
+    if data_args.task_name is not None and data_args.paper_split:
+        split = datasets["train"].train_test_split(test_size=0.3, seed=training_args.seed)
+        rest = split["test"].train_test_split(test_size=2 / 3, seed=training_args.seed)
+        datasets["train"] = split["train"]   # 70%
+        datasets["scale"] = rest["train"]    # 10%
+        datasets["meta"] = rest["test"]      # 20%
+        use_scaling = not is_regression      # temperature scaling only for classification
+        use_meta = model_args.use_meta_predictors
+        logger.info(f"Paper split: tune={len(datasets['train'])} scale={len(datasets['scale'])} "
+                    f"meta={len(datasets['meta'])} (scaling={'on' if use_scaling else 'off'})")
     
     print("datasets. loaded and preprocessed")
     if training_args.do_train:
@@ -460,10 +473,18 @@ def main():
             meta_logits = p.predictions[1]
         else:
             cls_logits = p.predictions
-        top_preds = np.squeeze(cls_logits[:,-1,:]) if is_regression else np.argmax(cls_logits[:,-1,:], axis=1)
+        top_preds = cls_logits[:,-1,0] if is_regression else np.argmax(cls_logits[:,-1,:], axis=1)
+        tol = model_args.regression_tolerance
 
-        ece = ece_measure(torch.Tensor(cls_logits[:,-1,:]), torch.Tensor(p.label_ids))
-        metrics = {"ece": ece.item()}
+        def agree(a, b):
+            # Regression: within tolerance of the top layer; classification: same class.
+            return np.abs(a - b) <= tol if is_regression else a == b
+
+        metrics = {}
+        if not is_regression:
+            # ECE is only defined for class probabilities.
+            ece = ece_measure(torch.Tensor(cls_logits[:,-1,:]), torch.Tensor(p.label_ids))
+            metrics["ece"] = ece.item()
 
         result = metric.compute(predictions=top_preds, references=p.label_ids)
         if len(result) > 1:
@@ -472,19 +493,22 @@ def main():
             metrics[key] = value
 
         for i in range(cls_logits.shape[1] - 1):
-            preds = np.squeeze(cls_logits[:,i,:]) if is_regression else np.argmax(cls_logits[:,i,:], axis=1)
+            preds = cls_logits[:,i,0] if is_regression else np.argmax(cls_logits[:,i,:], axis=1)
             result = metric.compute(predictions=preds, references=p.label_ids)
             if len(result) > 1:
                 result["combined_score"] = np.mean(list(result.values())).item()
             for key, value in result.items():
                 metrics[f"{key}_{i}"] = value
 
-            ece = ece_measure(torch.Tensor(cls_logits[:,i,:]), torch.Tensor(p.label_ids))
-            metrics[f"ece_{i}"] = ece.item()
-            consistency = (preds == top_preds).mean()
+            if not is_regression:
+                ece = ece_measure(torch.Tensor(cls_logits[:,i,:]), torch.Tensor(p.label_ids))
+                metrics[f"ece_{i}"] = ece.item()
+            else:
+                metrics[f"mse_{i}"] = float(((preds - p.label_ids) ** 2).mean())
+            consistency = agree(preds, top_preds).mean()
             metrics[f"consistency_{i}"] = consistency
             if meta_logits is not None:
-                meta_labels = np.equal(preds, top_preds).astype(int)
+                meta_labels = agree(preds, top_preds).astype(int)
                 meta_preds = np.argmax(meta_logits[:,i,:], axis=-1)
                 meta_acc = (meta_preds == meta_labels).mean()
                 metrics[f"meta_accuracy_{i}"] = meta_acc
@@ -580,6 +604,7 @@ def main():
             args=scaling_args,
             optimizers=(optimizer, None),
             train_dataset=scaling_dataset,
+            eval_dataset=eval_dataset if training_args.do_eval else None,
             compute_metrics=compute_metrics_fn,
             processing_class=tokenizer,
         )
@@ -609,6 +634,7 @@ def main():
             model=model,
             args=meta_args,
             train_dataset=meta_dataset,
+            eval_dataset=eval_dataset if training_args.do_eval else None,
             compute_metrics=compute_metrics_fn,
             processing_class=tokenizer,
         )
@@ -622,11 +648,15 @@ def main():
             tokenizer.save_pretrained(training_args.output_dir)
 
     if model.use_meta_predictors:
+        prev_state = trainer.state
         trainer = Trainer(
             model=model,
             args=training_args,
+            eval_dataset=eval_dataset if training_args.do_eval else None,
             compute_metrics=compute_metrics_fn
         )
+        # Keep epoch/step from training so eval metrics report the real epoch.
+        trainer.state = prev_state
         model.meta_eval_mode = True
 
 

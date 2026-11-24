@@ -68,11 +68,19 @@ class ModelArguments:
     shared_meta: bool = field(
         default=False, metadata={"help": "Use a shared meta classifier for all layers. Using general features"}
     )
-    early_pooler_hidden_size: int = field(
-        default=32, metadata={"help": "Size of hidden layer for early poolers"}
+    early_pooler_hidden_size: Optional[int] = field(
+        default=None, metadata={"help": "Size of hidden layer for early poolers (default: model hidden_size / d_model)"}
     )
     regression_tolerance: float = field(
         default=0.5, metadata={"help": "How much tolerance can we afford for the prediction."}
+    )
+    early_pooling: str = field(
+        default="cls", metadata={"help": "Token pooling for early heads: 'cls' (paper) or 'mean' "
+                                         "(attention-masked mean over all tokens)."}
+    )
+    init_early_from_top: bool = field(
+        default=True, metadata={"help": "Initialise each early pooler/classifier as a copy of the fine-tuned "
+                                        "top pooler/classifier (requires use_early_poolers)."}
     )
 
 
@@ -96,6 +104,10 @@ class AlbertWithEarlyExits(AlbertForSequenceClassification):
     def __init__(self, config):
         super().__init__(config)
 
+        # Early poolers mirror ALBERT's own pooler: d_model -> d_model.
+        if getattr(config, "early_pooler_hidden_size", None) is None:
+            config.early_pooler_hidden_size = config.hidden_size
+
         # Don't include last layer.
         self.num_inner_classifiers = config.num_hidden_layers - 1
 
@@ -106,6 +118,7 @@ class AlbertWithEarlyExits(AlbertForSequenceClassification):
         self.joint_meta = config.joint_meta
         self.shared_meta = config.shared_meta
         self.regression_tolerance = config.regression_tolerance
+        self.early_pooling = getattr(config, "early_pooling", "cls")
         if self.use_early_poolers:
             if self.use_history_logits:
                 self.early_poolers = nn.ModuleList([nn.Linear(config.hidden_size + i*self.num_labels,
@@ -192,6 +205,34 @@ class AlbertWithEarlyExits(AlbertForSequenceClassification):
                     done.append(name)
         return done
 
+    def init_early_from_top(self):
+        """Copy the fine-tuned top pooler/classifier into every early head.
+
+        Gives each head a sensible starting point (the paper's heads share the
+        top head's architecture). Only possible when shapes match.
+        """
+        if not self.use_early_poolers or self.use_history_logits:
+            return False
+        top_pooler = self.albert.pooler
+        if top_pooler is None or top_pooler.weight.shape != self.early_poolers[0].weight.shape:
+            return False
+        with torch.no_grad():
+            for i in range(self.num_inner_classifiers):
+                self.early_poolers[i].weight.copy_(top_pooler.weight)
+                self.early_poolers[i].bias.copy_(top_pooler.bias)
+                self.early_classifiers[i].weight.copy_(self.classifier.weight)
+                self.early_classifiers[i].bias.copy_(self.classifier.bias)
+        return True
+
+    def _pool(self, hidden, attention_mask):
+        """[batch, seq, hidden] -> [batch, hidden] via [CLS] or masked mean."""
+        if self.early_pooling == "mean":
+            if attention_mask is None:
+                return hidden.mean(dim=1)
+            m = attention_mask.unsqueeze(-1).to(hidden.dtype)
+            return (hidden * m).sum(1) / m.sum(1).clamp(min=1.0)
+        return hidden[:, 0, :]
+
     def freeze_backbone(self):
         """Keep the fine-tuned ALBERT and top classifier fixed; only CAT heads train.
 
@@ -207,7 +248,7 @@ class AlbertWithEarlyExits(AlbertForSequenceClassification):
     def nonfinite_params(self):
         return [n for n, p in self.named_parameters() if not torch.isfinite(p).all()]
 
-    def run_early_classifiers(self, top_logits, outputs):
+    def run_early_classifiers(self, top_logits, outputs, attention_mask=None):
         all_logits = top_logits.new_zeros(
                                 top_logits.shape[0],  # Batch size
                                 self.num_inner_classifiers + 1,
@@ -224,7 +265,7 @@ class AlbertWithEarlyExits(AlbertForSequenceClassification):
         # Intermediate classifiers
         for i in range(self.num_inner_classifiers):
             if not self.temp_scaling_mode:
-                cls = outputs[2][i+1][:,0,:]
+                cls = self._pool(outputs[2][i+1], attention_mask)
                 if self.use_history_logits and i > 0:
                     cls = torch.cat((cls, all_logits[:,:i,:].view(-1, i*self.num_labels)), dim=-1)
                 cls = self.early_dropout(cls)
@@ -236,7 +277,7 @@ class AlbertWithEarlyExits(AlbertForSequenceClassification):
                     layer_logits /= self.early_temperatures[i]
             else:
                 with torch.no_grad():
-                    cls = outputs[2][i+1][:,0,:]
+                    cls = self._pool(outputs[2][i+1], attention_mask)
                     if self.use_history_logits and i > 0:
                         cls = torch.cat((cls, all_logits[:,:i,:].view(-1, i*self.num_labels)), dim=-1)
                     cls = self.early_dropout(cls)
@@ -351,16 +392,16 @@ class AlbertWithEarlyExits(AlbertForSequenceClassification):
         meta_logits = None
         if self.meta_training_mode or self.meta_eval_mode:
             with torch.no_grad():
-                all_logits, hidden_cls = self.run_early_classifiers(top_logits, outputs)
+                all_logits, hidden_cls = self.run_early_classifiers(top_logits, outputs, attention_mask)
             meta_logits = self.run_meta_predictors(all_logits, hidden_cls)
         else:
-            all_logits, _ = self.run_early_classifiers(top_logits, outputs)
+            all_logits, _ = self.run_early_classifiers(top_logits, outputs, attention_mask)
 
         loss = None
         if not self.meta_training_mode and (labels is not None or self.use_consistency_loss):
-            # Fix: cast labels to Long for CrossEntropyLoss
+            # CrossEntropyLoss needs Long labels; regression (MSE) needs float labels.
             if labels is not None:
-                labels = labels.long()
+                labels = labels.float() if self.num_labels == 1 else labels.long()
             loss = 0.0
             #  Average over all intermediate losses
             # TODO: use view to avoid the for loop
@@ -383,9 +424,11 @@ class AlbertWithEarlyExits(AlbertForSequenceClassification):
 
         if self.meta_training_mode:
             loss = 0.0
-            # Fix: cast labels to Long for CrossEntropyLoss
-            labels = labels.long()
-            top_correct = all_logits[:,-1,:].argmax(-1).view(-1).eq(labels.view(-1)).long()
+            if self.num_labels == 1:
+                top_correct = torch.abs(all_logits[:,-1,0] - labels.float().view(-1)).le(self.regression_tolerance).long()
+            else:
+                labels = labels.long()
+                top_correct = all_logits[:,-1,:].argmax(-1).view(-1).eq(labels.view(-1)).long()
             for i in range(self.num_inner_classifiers):
                 if self.num_labels == 1:
                     #  We are doing regression

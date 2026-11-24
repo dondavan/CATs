@@ -5,25 +5,27 @@ import numpy as np
 
 
 def write_predictions(cls_logits, meta_logits, id2label, gold_labels, output_pred_file):
+    regression = len(id2label.keys()) == 1
     pred_labels = np.argmax(cls_logits, axis=-1)
     with open(output_pred_file, "w") as writer:
         for i in range(len(cls_logits)):
             ex_logits = cls_logits[i]
-            # pred_labels[i] is a scalar when logits are (N, C) rather than (N, L, C)
-            ex_pred_label = [id2label[int(p)] for p in np.atleast_1d(pred_labels[i])]
-
-            # Counting consecutive similar predictions
-            patience = [0] * len(ex_pred_label)
-            for _ in range(len(ex_pred_label)):
-                patience = [0] + [patience[i-1]+1 if ex_pred_label[i-1] == ex_pred_label[i] else 0 for i in range(1, len(ex_pred_label))]
-            if len(id2label.keys()) == 1:
-                # Regression
+            if regression:
+                # layer_logits[l][0] is layer l's predicted similarity score
                 out_dict = {
                     "ind": i,
                     "layer_logits": ex_logits.tolist(),
-                    "gold_label": gold_labels[i],
+                    "predicted_scores": np.atleast_2d(ex_logits)[:, 0].tolist(),
+                    "gold_label": float(gold_labels[i]),
                     }
             else:
+                # pred_labels[i] is a scalar when logits are (N, C) rather than (N, L, C)
+                ex_pred_label = [id2label[int(p)] for p in np.atleast_1d(pred_labels[i])]
+
+                # Counting consecutive similar predictions
+                patience = [0] * len(ex_pred_label)
+                for _ in range(len(ex_pred_label)):
+                    patience = [0] + [patience[i-1]+1 if ex_pred_label[i-1] == ex_pred_label[i] else 0 for i in range(1, len(ex_pred_label))]
                 out_dict = {
                     "ind": i,
                     "layer_logits": ex_logits.tolist(),
