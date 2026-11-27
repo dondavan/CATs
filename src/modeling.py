@@ -262,13 +262,18 @@ class AlbertWithEarlyExits(AlbertForSequenceClassification):
                                 self.num_inner_classifiers,
                                 hidden_cls_size)
 
+        # Early heads are frozen during temp scaling / meta training: no dropout there,
+        # so temperatures and meta labels are fitted on the same logits seen at eval time.
+        frozen_heads = self.temp_scaling_mode or self.meta_training_mode
+        drop = (lambda x: x) if frozen_heads else self.early_dropout
+
         # Intermediate classifiers
         for i in range(self.num_inner_classifiers):
             if not self.temp_scaling_mode:
                 cls = self._pool(outputs[2][i+1], attention_mask)
                 if self.use_history_logits and i > 0:
                     cls = torch.cat((cls, all_logits[:,:i,:].view(-1, i*self.num_labels)), dim=-1)
-                cls = self.early_dropout(cls)
+                cls = drop(cls)
                 if self.use_early_poolers:
                     cls = self.early_poolers[i](cls)
                     cls = self.early_pooler_activation(cls)
@@ -280,7 +285,7 @@ class AlbertWithEarlyExits(AlbertForSequenceClassification):
                     cls = self._pool(outputs[2][i+1], attention_mask)
                     if self.use_history_logits and i > 0:
                         cls = torch.cat((cls, all_logits[:,:i,:].view(-1, i*self.num_labels)), dim=-1)
-                    cls = self.early_dropout(cls)
+                    cls = drop(cls)
                     if self.use_early_poolers:
                         cls = self.early_poolers[i](cls)
                         cls = self.early_pooler_activation(cls)

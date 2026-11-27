@@ -509,6 +509,9 @@ def main():
             metrics[f"consistency_{i}"] = consistency
             if meta_logits is not None:
                 meta_labels = agree(preds, top_preds).astype(int)
+                if model_args.joint_meta and not is_regression:
+                    # Match training: 1 iff exit agrees with top AND top is correct.
+                    meta_labels = meta_labels * (top_preds == p.label_ids).astype(int)
                 meta_preds = np.argmax(meta_logits[:,i,:], axis=-1)
                 meta_acc = (meta_preds == meta_labels).mean()
                 metrics[f"meta_accuracy_{i}"] = meta_acc
@@ -561,7 +564,7 @@ def main():
         )
         metrics["train_samples"] = min(max_train_samples, len(train_dataset))
 
-        if data_args.early_scaling_file:
+        if use_scaling:
             trainer.save_model(os.path.join(training_args.output_dir, "pre_scaling"))
             if trainer.is_world_process_zero():
                 tokenizer.save_pretrained(os.path.join(training_args.output_dir, "pre_scaling"))
@@ -588,17 +591,18 @@ def main():
         trainer.save_metrics("train", metrics)
         trainer.save_state()
 
-    # Temperature scaling
-    if data_args.early_scaling_file:
+    # Temperature scaling (paper split: classification only)
+    if use_scaling:
         logger.info("*** Scaling temperatures ***")
         scaling_dataset = datasets["scale"]
         model.temp_scaling_mode = True
         optimizer = AdamW([model.early_temperatures], lr=0.001)
         scaling_args = deepcopy(training_args)
-        if training_args.scaling_iterations is not None:
-            scaling_args.max_steps = training_args.scaling_iterations
-            scaling_args.save_steps = training_args.scaling_iterations
-            scaling_args.fp16 = False
+        # Only ~num_layers temperatures are fitted: a few hundred steps suffice (default 500).
+        scaling_args.max_steps = training_args.scaling_iterations or 500
+        scaling_args.save_steps = scaling_args.max_steps
+        scaling_args.fp16 = False
+        scaling_args.eval_strategy = "no"
         trainer = Trainer(
             model=model,
             args=scaling_args,
@@ -617,19 +621,20 @@ def main():
         if trainer.is_world_process_zero():
             tokenizer.save_pretrained(training_args.output_dir)
 
-    # Train the meta predictors
-    if data_args.early_meta_file:
-        logger.info("*** Training meta predictors ***")
+    # Train the meta predictors (on the 20% D_meta split, early heads frozen)
+    if use_meta:
+        logger.info(f"*** Training meta predictors on {len(datasets['meta'])} examples ***")
         meta_dataset = datasets["meta"]
         assert model.use_meta_predictors
         model.temp_scaling_mode = False
         model.meta_training_mode = True
         meta_args = deepcopy(training_args)
-        if training_args.scaling_iterations is not None:
+        if training_args.meta_iterations is not None:
             meta_args.max_steps = training_args.meta_iterations
             meta_args.save_steps = training_args.meta_iterations
         if training_args.meta_learning_rate is not None:
             meta_args.learning_rate = training_args.meta_learning_rate
+        meta_args.eval_strategy = "no"  # final evaluation below reports meta accuracy
         trainer = Trainer(
             model=model,
             args=meta_args,
@@ -647,7 +652,12 @@ def main():
         if trainer.is_world_process_zero():
             tokenizer.save_pretrained(training_args.output_dir)
 
-    if model.use_meta_predictors:
+    # Leave training modes so the final eval computes the early-exit loss, not the meta loss.
+    model.temp_scaling_mode = False
+    model.meta_training_mode = False
+
+    # Only report meta accuracy if the meta predictors were actually trained.
+    if model.use_meta_predictors and use_meta:
         prev_state = trainer.state
         trainer = Trainer(
             model=model,
